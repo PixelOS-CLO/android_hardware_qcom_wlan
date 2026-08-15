@@ -27,6 +27,21 @@ static int nan_pairing_set_key(hal_info *info, int alg, const u8 *addr,
 wifi_error nan_pairing_set_group_key(transaction_id id,
                                      wifi_interface_handle iface,
                                      struct nan_groupkey_info *info);
+
+static int nan_pairing_eppke_set_key(void *ctx, enum wpa_alg alg,
+                                     const u8 *addr, int vlan_id,
+                                     const u8 *key, size_t key_len)
+{
+    ALOGV("%s: EPPKE set_key not supported for NAN Pairing", __FUNCTION__);
+    return -1;
+}
+
+static struct rsn_pmksa_cache_entry *
+nan_pairing_pmksa_cache_search(void *ctx, const u8 *spa, const u8 *pmkid,
+                               bool is_ml)
+{
+    return NULL;
+}
 #endif
 
 static u16 sda_get_service_info_offset(const u8 *buf, size_t buf_len, u8 window)
@@ -796,7 +811,8 @@ void nan_rx_mgmt_auth(wifi_handle handle, const u8 *frame, size_t len)
             }
             ptksa_cache_add(info->secure_nan->ptksa, info->secure_nan->own_addr,
                             peer->bssid, pasn_get_cipher(pasn), nanPMKLifetime,
-                            pasn_get_ptk(pasn), NULL, NULL, pasn_get_akmp(pasn));
+                            pasn_get_ptk(pasn), NULL, NULL, pasn_get_akmp(pasn),
+                            le_to_host16(mgmt->u.auth.auth_alg));
             memset(pasn_get_ptk(pasn), 0, sizeof(struct wpa_ptk));
         } else if (ret == -1 || mgmt->u.auth.status_code) {
             NanPairingConfirmInd evt;
@@ -837,7 +853,9 @@ nan_pairing_add_peer_to_list(struct wpa_secure_nan *secure_nan, u8 *mac)
            entry->pairing_instance_id = secure_nan->pairing_id++;
            pasn_register_callbacks(entry->pasn, secure_nan->cb_ctx,
                                    nan_send_tx_mgmt,
-                                   nan_pairing_validate_custom_pmkid);
+                                   nan_pairing_validate_custom_pmkid,
+                                   nan_pairing_eppke_set_key,
+                                   nan_pairing_pmksa_cache_search);
            return entry;
        }
     }
@@ -860,7 +878,9 @@ nan_pairing_add_peer_to_list(struct wpa_secure_nan *secure_nan, u8 *mac)
     }
 
     pasn_register_callbacks(mentry->pasn, secure_nan->cb_ctx, nan_send_tx_mgmt,
-                            nan_pairing_validate_custom_pmkid);
+                            nan_pairing_validate_custom_pmkid,
+                            nan_pairing_eppke_set_key,
+                            nan_pairing_pmksa_cache_search);
     wpa_pasn_reset(mentry->pasn);
     add_to_list(&mentry->list, &secure_nan->peers);
     return mentry;
@@ -1137,7 +1157,8 @@ int nan_send_tx_mgmt(void *ctx, const u8 *frame_buf, size_t frame_len,
         ptksa_cache_add(info->secure_nan->ptksa, info->secure_nan->own_addr,
                         peer->bssid,pasn_get_cipher(pasn), 43200,
                         pasn_get_ptk(pasn), NULL, NULL,
-                        pasn_get_akmp(pasn));
+                        pasn_get_akmp(pasn),
+                        le_to_host16(mgmt->u.auth.auth_alg));
         nan_pairing_set_keys_from_cache(handle, info->secure_nan->own_addr,
                                         peer->bssid,pasn_get_cipher(pasn),
                                         pasn_get_akmp(pasn), peer->peer_role);

@@ -37,6 +37,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#include "common/ieee802_11_defs.h"
 #include "rsn_supp/pmksa_cache.h"
 #ifdef __cplusplus
 }
@@ -64,7 +65,7 @@ int nan_pairing_initiator_pmksa_cache_add(struct rsn_pmksa_cache *pmksa,
                                           u32 pmk_len)
 {
     if (pmksa_cache_add(pmksa, pmk, pmk_len, NULL, NULL, 0, bssid, own_addr,
-                        NULL, WPA_KEY_MGMT_SAE, 0))
+                        NULL, WPA_KEY_MGMT_SAE, 0, WLAN_AUTH_SAE))
           return 0;
     return -1;
 }
@@ -84,7 +85,7 @@ int nan_pairing_initiator_pmksa_cache_get(struct rsn_pmksa_cache *pmksa,
 
 void nan_pairing_initiator_pmksa_cache_flush(struct rsn_pmksa_cache *pmksa)
 {
-    return pmksa_cache_flush(pmksa, NULL, NULL, 0, false);
+    return pmksa_cache_flush(pmksa, NULL, NULL, 0, false, NULL);
 }
 
 void NanCommand::notifyPairingInitiatorResponse(transaction_id id, u32 pairing_id)
